@@ -22,6 +22,11 @@ LIST CS = cnjsub ;
 LIST Pron = prn;
 LIST V = vblex vbser vbmod vaux  ;
 
+# Additional lists for proper name handling
+LIST Ant = ant ;
+LIST Cog = cog ;
+LIST Comp = comp ;
+
 LIST Nom = nom ;
 LIST Gen = gen ;
 LIST Dat = dat ;
@@ -62,10 +67,6 @@ SET NounFemNeu = (n f) OR (n nt) OR (n mfn) ;
 SET NOM-OR-GEN = Nom | Gen ;
 SET NOM-OR-ACC = Nom | Acc ;
 SET ACC-OR-GEN = Acc | Gen ;
-
-SET NOTMSC = Fem | Neu ;
-SET NOTFEM = Masc | Neu ;
-SET NOTNEU = Masc | Fem | (mf) ;
 
 SET NOTNOM = Gen | Dat | Acc | Ins | Loc | Voc ;
 SET NOTGEN = Nom | Dat | Acc | Ins | Loc | Voc ;
@@ -115,6 +116,17 @@ SET NP-HEAD = N | Pron | Prop ;
 
 SET S-BOUNDARY = CS | Interr | (";") ;
 
+# Additional sets adapted from Russian rules
+SET MFN = Masc | Fem | Neu ;
+SET PersonTitleMsc = ("князь") | ("імператар") | ("прынц") | ("атаман") | ("цар") ;
+SET PersonTitleFem = ("імператрыца") | ("каралева") ;
+SET PersonTitle = PersonTitleMsc | PersonTitleFem ;
+
+# Preposition sets for case government
+SET PrGenitive = ("у") | ("ля") | ("да") | ("ад") | ("з") | ("са") | ("без") | ("сярод") | ("каля") | ("вакол") | (дзеля) | (з-за) | (з-над);
+SET PrDative = ("да") | ("к") ;
+SET PrAccLoc = ("у") | ("ў") | ("на") ;
+
 # =========================================================================== #
 
 SECTION
@@ -122,33 +134,19 @@ SECTION
 SELECT Pron IF (0 ("які")) (-1 COMMA) ;
     ## Хлопчык, які быў тут.
 
-# ===== ADJECTIVE DISAMBIGUATION RULES =====
-# Rules for gender agreement in predicative adjectives with intervening adverbs
-# Added for gender agreement fixes in bel-rus translation
+# ===== PREDICATIVE ADJECTIVE RULES WITH INTERVENING ADVERBS =====
+# These rules handle the specific pattern: Noun + Adverb(s) + Adjective
+# Cannot be replaced by universal rules due to adverb intervention
 
-# Rule 1: Select neuter nominative for predicative adjectives after neuter nouns
-SELECT (adj nt nom) IF (-1 Adv) (-2 (n nt nom)) ;
-    ## Жыццё вельмі прыгожае. → should be neuter nominative, not feminine genitive
+# Rule 1: General predicative adjective agreement with single adverb
+SELECT (adj $$GENDER $$CASE) IF (-1 Adv) (-2 (n $$GENDER $$CASE)) ;
+    ## Noun + Adverb + Adjective: adjective should match noun gender/case
 
-# Rule 2: Select neuter nominative for predicative adjectives after neuter nouns (with multiple adverbs)
-SELECT (adj nt nom) IF (-1 Adv) (-2 Adv) (-3 (n nt nom)) ;
-    ## Жыццё проста вельмі прыгожае. → handle double adverbs
+# Rule 2: General predicative adjective agreement with double adverbs  
+SELECT (adj $$GENDER $$CASE) IF (-1 Adv) (-2 Adv) (-3 (n $$GENDER $$CASE)) ;
+    ## Noun + Adverb + Adverb + Adjective: handle double adverbs
 
-# Rule 3: Remove feminine genitive reading when we have neuter noun context
-REMOVE (adj f gen) IF (-1 Adv) (-2 (n nt nom)) ;
-    ## Жыццё вельмі прыгожае. → remove wrong feminine genitive reading
-
-# Rule 4: Remove feminine genitive reading with double adverbs
-REMOVE (adj f gen) IF (-1 Adv) (-2 Adv) (-3 (n nt nom)) ;
-    ## Жыццё проста вельмі прыгожае. → remove wrong feminine genitive with double adverbs
-
-# Rule 5: General rule - select nominative for predicative adjectives (after adverb)
-SELECT (adj nt nom) IF (-1 Adv) (-2C (n nt)) ;
-    ## General pattern: neuter noun + adverb + adjective should be nominative
-
-# Rule 6: Remove genitive readings for predicative adjectives
-REMOVE (adj nt gen) IF (-1 Adv) (-2C (n nt nom)) ;
-    ## Remove genitive readings for predicative adjectives after neuter nominative nouns
+# Rules 3-6 removed - should be handled by Rules 1-2 with variables
 
 # ===== PLURAL DISAMBIGUATION RULES =====
 
@@ -170,27 +168,50 @@ REMOVE (n sg gen) IF (-1 Det) (1 Adv) (2 (adj pl nom)) ;
 
 # ===== COORDINATION AGREEMENT RULES =====
 
-# Rule 11: Select nominative for coordinated adjectives after conjunction
-SELECT (adj nt nom) IF (-1 CC) (-2 (adj nt nom)) ;
-    ## прыгожае і цікавае → both adjectives should be neuter nominative
+# Rule 11: General coordinated adjective agreement (replaces old Rules 11-16)
+SELECT A + $$GENDER + $$CASE IF (-1 CC) (-2 (adj $$GENDER $$CASE)) ;
+    ## Coordinated adjectives should have same gender and case
 
-# Rule 12: Remove genitive reading for coordinated adjectives  
-REMOVE (adj f gen) IF (-1 CC) (-2 (adj nt nom)) ;
-    ## прыгожае і цікавае → remove wrong feminine genitive from second adjective
+# ===== GENERAL AGREEMENT RULES =====
+# Universal rules using variables (adapted from Russian)
 
-# Rule 13: Select matching gender for coordinated adjectives (general rule)
-SELECT (adj m nom) IF (-1 CC) (-2 (adj m nom)) ;
-    ## красивый и интересный → both masculine nominative
+# Rule 12: General adjective-noun agreement (replaces Rules 17-19)
+SELECT A + $$GENDER + $$CASE IF (0C A) (1C N + $$GENDER + $$CASE) ;
+    ## Select adjective that matches following noun in gender and case
 
-# Rule 14: Select matching gender for coordinated adjectives (feminine)
-SELECT (adj f nom) IF (-1 CC) (-2 (adj f nom)) ;
-    ## красивая и интересная → both feminine nominative
+# Rule 13: Adjective agreement after other adjectives (chains)
+SELECT A + $$CASE IF (0C A) (-1C A + $$CASE LINK -1C* Pr BARRIER (*) - A - Adv - Det) ;
+    ## Adjective chains should agree in case
 
-# Rule 15: Select matching number for coordinated adjectives (plural)
-SELECT (adj pl nom) IF (-1 CC) (-2 (adj pl nom)) ;
-    ## красивые и интересные → both plural nominative
+# ===== DETERMINER AGREEMENT RULES =====
 
-# Rule 16: Remove wrong case for coordinated adjectives 
-REMOVE (adj gen) IF (-1 CC) (-2 (adj nom)) ;
-    ## Remove genitive readings when first adjective is nominative
+# Rule 14: Determiner-noun agreement
+SELECT Det + $$GENDER + $$CASE IF (1C* N + $$GENDER + $$CASE BARRIER CASE - $$CASE) ;
+    ## Determiner should match noun gender and case
+
+# ===== PREPOSITIONAL AGREEMENT RULES =====
+# Agreement patterns after prepositions (adapted from Russian)
+
+# Rule 15: Adjective agreement after prepositions
+SELECT A + $$CASE IF (-1C Pr) (0C A OR N) (1C N + $$CASE) ;
+    ## Adjective after preposition should match noun case
+
+# ===== PROPER NAME AGREEMENT RULES =====
+# Agreement for proper names (adapted from Russian)
+
+# Rule 16: Proper name agreement (first name + surname)
+SELECT Ant + $$CASE IF (1C Cog + $$CASE) ;
+    ## First name should match surname case
+
+# Rule 17: Proper name agreement (surname follows first name)
+SELECT Cog + $$CASE IF (-1C Ant + $$CASE) ;
+    ## Surname should match first name case
+
+# Rule 18: Gender agreement for proper names with titles
+SELECT $$GENDER IF (0C Ant) (-1C PersonTitleMsc) (0C Masc OR Fem) ;
+    ## Masculine title implies masculine name
+
+# Rule 19: Gender agreement for proper names with feminine titles  
+SELECT Fem IF (0C Ant) (-1C PersonTitleFem) (0C Masc OR Fem) ;
+    ## Feminine title implies feminine name
 
