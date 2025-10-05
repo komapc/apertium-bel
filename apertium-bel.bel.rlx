@@ -146,72 +146,70 @@ SELECT (adj $$GENDER $$CASE) IF (-1 Adv) (-2 (n $$GENDER $$CASE)) ;
 SELECT (adj $$GENDER $$CASE) IF (-1 Adv) (-2 Adv) (-3 (n $$GENDER $$CASE)) ;
     ## Noun + Adverb + Adverb + Adjective: handle double adverbs
 
-# Rules 3-6 removed - should be handled by Rules 1-2 with variables
-
 # ===== PLURAL DISAMBIGUATION RULES =====
 
-# Rule 7: Select plural nominative for nouns when followed by plural nominative adjectives
+# Rule 3: Select plural nominative for nouns when followed by plural nominative adjectives
 SELECT (n pl nom) IF (1 Adv) (2 (adj pl nom)) ;
     ## Мовы вельмі прыгожыя. → prefer plural nominative noun when adjective is plural nominative
 
-# Rule 8: Remove singular genitive reading when we have plural nominative adjective context
+# Rule 4: Remove singular genitive reading when we have plural nominative adjective context
 REMOVE (n sg gen) IF (1 Adv) (2 (adj pl nom)) ;
     ## Мовы вельмі прыгожыя. → remove wrong singular genitive reading
 
-# Rule 9: Select plural nominative for nouns with determiner + adverb + plural adjective
+# Rule 5: Select plural nominative for nouns with determiner + adverb + plural adjective
 SELECT (n pl nom) IF (-1 Det) (1 Adv) (2 (adj pl nom)) ;
     ## Гэтыя мовы вельмі прыгожыя. → handle determiner + noun + adv + adj pattern
 
-# Rule 10: Remove singular genitive with determiner context
+# Rule 6: Remove singular genitive with determiner context
 REMOVE (n sg gen) IF (-1 Det) (1 Adv) (2 (adj pl nom)) ;
     ## Гэтыя мовы вельмі прыгожыя. → remove wrong singular genitive with determiner
 
 # ===== COORDINATION AGREEMENT RULES =====
 
-# Rule 11: General coordinated adjective agreement (replaces old Rules 11-16)
+# Rule 7: General coordinated adjective agreement
 SELECT A + $$GENDER + $$CASE IF (-1 CC) (-2 (adj $$GENDER $$CASE)) ;
     ## Coordinated adjectives should have same gender and case
 
 # ===== GENERAL AGREEMENT RULES =====
 # Universal rules using variables (adapted from Russian)
 
-# Rule 12: General adjective-noun agreement (replaces Rules 17-19)
+# Rule 8: General adjective-noun agreement
 SELECT A + $$GENDER + $$CASE IF (0C A) (1C N + $$GENDER + $$CASE) ;
     ## Select adjective that matches following noun in gender and case
 
-# Rule 13: Adjective agreement after other adjectives (chains)
+# Rule 9: Adjective agreement after other adjectives (chains)
 SELECT A + $$CASE IF (0C A) (-1C A + $$CASE LINK -1C* Pr BARRIER (*) - A - Adv - Det) ;
     ## Adjective chains should agree in case
 
 # ===== DETERMINER AGREEMENT RULES =====
 
-# Rule 14: Determiner-noun agreement
+# Rule 10: Determiner-noun agreement
 SELECT Det + $$GENDER + $$CASE IF (1C* N + $$GENDER + $$CASE BARRIER CASE - $$CASE) ;
     ## Determiner should match noun gender and case
 
 # ===== PREPOSITIONAL AGREEMENT RULES =====
 # Agreement patterns after prepositions (adapted from Russian)
 
-# Rule 15: Adjective agreement after prepositions
+# Rule 11: Adjective agreement after prepositions
 SELECT A + $$CASE IF (-1C Pr) (0C A OR N) (1C N + $$CASE) ;
     ## Adjective after preposition should match noun case
 
 # ===== PROPER NAME AGREEMENT RULES =====
 # Agreement for proper names (adapted from Russian)
 
-# Rule 16: Proper name agreement (first name + surname)
+# Rule 12: Proper name agreement (first name + surname)
 SELECT Ant + $$CASE IF (1C Cog + $$CASE) ;
     ## First name should match surname case
 
-# Rule 17: Proper name agreement (surname follows first name)
+# Rule 13: Proper name agreement (surname follows first name)
 SELECT Cog + $$CASE IF (-1C Ant + $$CASE) ;
     ## Surname should match first name case
 
-# Rule 18: Gender agreement for proper names with titles
+# Rule 14: Gender agreement for proper names with titles
 SELECT $$GENDER IF (0C Ant) (-1C PersonTitleMsc) (0C Masc OR Fem) ;
     ## Masculine title implies masculine name
 
-# Rule 19: Gender agreement for proper names with feminine titles  
+# Rule 15: Gender agreement for proper names with feminine titles  
 SELECT Fem IF (0C Ant) (-1C PersonTitleFem) (0C Masc OR Fem) ;
     ## Feminine title implies feminine name
 
